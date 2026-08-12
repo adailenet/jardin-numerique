@@ -21,20 +21,10 @@ jobs:
       - name: Récupérer le dépôt
         uses: actions/checkout@v4
 
-      - name: Installer Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.x'
-
-      - name: Construire le site
+      - name: Installer, construire et publier l'artefact du site
         uses: withastro/action@v3
         with:
-          node-version: 24
-
-      - name: Publier l'artefact du site
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
+          node-version: 22
 
   deploy:
     needs: build
@@ -46,5 +36,3 @@ jobs:
       - name: Déployer sur GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-        
-
