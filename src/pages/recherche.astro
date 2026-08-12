@@ -1,0 +1,74 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Recherche">
+  <h1>Recherche</h1>
+  <p>
+    Cherche dans le titre, le résumé et le texte de toutes les notes publiées. La recherche
+    tourne entièrement dans le navigateur : aucune donnée n'est envoyée à un serveur.
+  </p>
+
+  <input
+    id="search-input"
+    type="search"
+    placeholder="ex. couleur, jardin, idée..."
+    autocomplete="off"
+  />
+  <span id="search-results-count"></span>
+
+  <ul class="gallery" id="search-results"></ul>
+</Base>
+
+<script>
+  type Note = {
+    id: string;
+    title: string;
+    summary: string;
+    tags: string[];
+    body: string;
+  };
+
+  const input = document.getElementById("search-input") as HTMLInputElement;
+  const resultsEl = document.getElementById("search-results") as HTMLUListElement;
+  const countEl = document.getElementById("search-results-count") as HTMLSpanElement;
+
+  let notes: Note[] = [];
+
+  function render(list: Note[]) {
+    resultsEl.innerHTML = list
+      .map(
+        (n) => `
+        <li class="card">
+          <h3><a href="/notes/${n.id}/">${n.title}</a></h3>
+          ${n.summary ? `<p>${n.summary}</p>` : ""}
+          <div class="tags">${n.tags.map((t) => `<span class="tag">${t}</span>`).join("")}</div>
+        </li>`,
+      )
+      .join("");
+  }
+
+  function search(query: string) {
+    const q = query.trim().toLowerCase();
+    if (!q) {
+      countEl.textContent = "";
+      resultsEl.innerHTML = "";
+      return;
+    }
+    const matches = notes.filter((n) =>
+      [n.title, n.summary, n.body, ...n.tags].join(" ").toLowerCase().includes(q),
+    );
+    countEl.textContent = `${matches.length} résultat${matches.length !== 1 ? "s" : ""}`;
+    render(matches);
+  }
+
+  fetch("/search-index.json")
+    .then((r) => r.json())
+    .then((data: Note[]) => {
+      notes = data;
+      input.disabled = false;
+      if (input.value) search(input.value);
+    });
+
+  input.addEventListener("input", () => search(input.value));
+</script>

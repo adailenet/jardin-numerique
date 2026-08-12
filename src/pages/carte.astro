@@ -1,0 +1,119 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Carte du jardin">
+  <h1>Carte du jardin</h1>
+  <p>
+    Chaque point est une note, chaque trait une étiquette partagée. C'est une première brique de
+    visualisation : à remplacer plus tard par quelque chose de plus riche (D3.js, par exemple) si
+    le jardin grandit beaucoup.
+  </p>
+
+  <div id="map-wrap" style="border:1px solid var(--line); border-radius:var(--radius); background:white;">
+    <svg id="map" viewBox="0 0 640 460" style="width:100%; height:auto; display:block;"></svg>
+  </div>
+</Base>
+
+<script>
+  type Note = { id: string; title: string; tags: string[] };
+
+  type NodeSim = Note & { x: number; y: number; vx: number; vy: number };
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const width = 640;
+  const height = 460;
+
+  fetch("/search-index.json")
+    .then((r) => r.json())
+    .then((notes: Note[]) => {
+      const nodes: NodeSim[] = notes.map((n, i) => {
+        const angle = (i / notes.length) * Math.PI * 2;
+        return {
+          ...n,
+          x: width / 2 + Math.cos(angle) * 120,
+          y: height / 2 + Math.sin(angle) * 120,
+          vx: 0,
+          vy: 0,
+        };
+      });
+
+      const edges: [number, number][] = [];
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const shared = nodes[i].tags.some((t) => nodes[j].tags.includes(t));
+          if (shared) edges.push([i, j]);
+        }
+      }
+
+      // simulation très simple : répulsion entre tous les noeuds,
+      // attraction le long des arêtes, recentrage doux.
+      for (let step = 0; step < 300; step++) {
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = 0; j < nodes.length; j++) {
+            if (i === j) continue;
+            const dx = nodes[i].x - nodes[j].x;
+            const dy = nodes[i].y - nodes[j].y;
+            const dist = Math.max(Math.hypot(dx, dy), 1);
+            const force = 800 / (dist * dist);
+            nodes[i].vx += (dx / dist) * force;
+            nodes[i].vy += (dy / dist) * force;
+          }
+        }
+        for (const [a, b] of edges) {
+          const dx = nodes[b].x - nodes[a].x;
+          const dy = nodes[b].y - nodes[a].y;
+          const dist = Math.max(Math.hypot(dx, dy), 1);
+          const force = (dist - 140) * 0.01;
+          nodes[a].vx += (dx / dist) * force;
+          nodes[a].vy += (dy / dist) * force;
+          nodes[b].vx -= (dx / dist) * force;
+          nodes[b].vy -= (dy / dist) * force;
+        }
+        for (const n of nodes) {
+          n.vx += (width / 2 - n.x) * 0.001;
+          n.vy += (height / 2 - n.y) * 0.001;
+          n.x += n.vx *= 0.85;
+          n.y += n.vy *= 0.85;
+          n.x = Math.min(width - 20, Math.max(20, n.x));
+          n.y = Math.min(height - 20, Math.max(20, n.y));
+        }
+      }
+
+      const svg = document.getElementById("map")!;
+
+      for (const [a, b] of edges) {
+        const line = document.createElementNS(svgNS, "line");
+        line.setAttribute("x1", String(nodes[a].x));
+        line.setAttribute("y1", String(nodes[a].y));
+        line.setAttribute("x2", String(nodes[b].x));
+        line.setAttribute("y2", String(nodes[b].y));
+        line.setAttribute("stroke", "#d8d2c1");
+        line.setAttribute("stroke-width", "1");
+        svg.appendChild(line);
+      }
+
+      for (const n of nodes) {
+        const a = document.createElementNS(svgNS, "a");
+        a.setAttribute("href", `/notes/${n.id}/`);
+
+        const circle = document.createElementNS(svgNS, "circle");
+        circle.setAttribute("cx", String(n.x));
+        circle.setAttribute("cy", String(n.y));
+        circle.setAttribute("r", "7");
+        circle.setAttribute("fill", "#5b7553");
+        a.appendChild(circle);
+
+        const label = document.createElementNS(svgNS, "text");
+        label.setAttribute("x", String(n.x + 10));
+        label.setAttribute("y", String(n.y + 4));
+        label.setAttribute("font-size", "11");
+        label.setAttribute("font-family", "IBM Plex Mono, monospace");
+        label.setAttribute("fill", "#22281f");
+        label.textContent = n.title;
+        a.appendChild(label);
+
+        svg.appendChild(a);
+      }
+    });
+</script>

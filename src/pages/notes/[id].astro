@@ -1,0 +1,47 @@
+---
+import Base from "../../layouts/Base.astro";
+import { getCollection, render } from "astro:content";
+
+export async function getStaticPaths() {
+  const notes = await getCollection("notes", ({ data }) => !data.draft);
+  return notes.map((note) => ({
+    params: { id: note.id },
+    props: { note },
+  }));
+}
+
+const { note } = Astro.props;
+const { Content } = await render(note);
+
+const dateFmt = (d: Date) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" });
+---
+
+<Base title={note.data.title} description={note.data.summary}>
+  <p><a href="/">&larr; retour à la galerie</a></p>
+
+  <span class:list={["stage", `stage-${note.data.stage}`]}>
+    <span class="stage-dot"></span>
+    {note.data.stage}
+  </span>
+
+  <h1>{note.data.title}</h1>
+
+  <p style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-soft);">
+    planté le {dateFmt(note.data.planted)}
+    {note.data.updated && <> · mis à jour le {dateFmt(note.data.updated)}</>}
+  </p>
+
+  <article>
+    <Content />
+  </article>
+
+  {
+    note.data.tags.length > 0 && (
+      <div class="tags" style="margin-top: 2.5rem;">
+        {note.data.tags.map((tag) => (
+          <span class="tag">{tag}</span>
+        ))}
+      </div>
+    )
+  }
+</Base>

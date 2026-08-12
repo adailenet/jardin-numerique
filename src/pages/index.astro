@@ -1,0 +1,73 @@
+---
+import Base from "../layouts/Base.astro";
+import NoteCard from "../components/NoteCard.astro";
+import { getCollection } from "astro:content";
+
+const notes = (await getCollection("notes", ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.planted.valueOf() - a.data.planted.valueOf(),
+);
+
+const allTags = [...new Set(notes.flatMap((n) => n.data.tags))].sort();
+---
+
+<Base title="Galerie">
+  <h1>Galerie</h1>
+  <p>
+    {notes.length} notes plantées jusqu'ici. Filtre par étiquette, ou passe par la
+    <a href="/recherche">recherche</a> pour chercher dans le texte.
+  </p>
+
+  {
+    allTags.length > 0 && (
+      <div class="tags" style="margin: 1.25rem 0 2rem;" id="tag-filters">
+        {allTags.map((tag) => (
+          <button
+            class="tag"
+            data-tag={tag}
+            style="cursor:pointer; background:none; font: inherit; font-family: var(--font-mono);"
+          >
+            {tag}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  <ul class="gallery" id="gallery">
+    {
+      notes.map((note) => (
+        <NoteCard
+          slug={note.id}
+          title={note.data.title}
+          summary={note.data.summary}
+          stage={note.data.stage}
+          tags={note.data.tags}
+        />
+      ))
+    }
+  </ul>
+</Base>
+
+<script>
+  // Petit filtre par tag, entièrement côté client, sans dépendance.
+  // C'est ici qu'on "hydrate" une interaction : le reste de la page reste
+  // du HTML statique.
+  const buttons = document.querySelectorAll<HTMLButtonElement>("#tag-filters .tag");
+  const cards = document.querySelectorAll<HTMLLIElement>("#gallery .card");
+  let active: string | null = null;
+
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tag = btn.dataset.tag!;
+      active = active === tag ? null : tag;
+
+      buttons.forEach((b) => (b.style.opacity = b.dataset.tag === active || !active ? "1" : "0.4"));
+
+      cards.forEach((card) => {
+        const tagsInCard = Array.from(card.querySelectorAll(".tag")).map((t) => t.textContent);
+        const show = !active || tagsInCard.includes(active);
+        (card as HTMLElement).style.display = show ? "" : "none";
+      });
+    });
+  });
+</script>
