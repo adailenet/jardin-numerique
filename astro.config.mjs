@@ -9,6 +9,6 @@ import { defineConfig } from "astro/config";
 //    - sinon (ex: repo "jardin") : décommente "base" ci-dessous
 export default defineConfig({
   output: "static",
-  site: "https://tonpseudo.github.io",
+  site: "https://adailenet.github.io",
   // base: "/jardin",
 });
