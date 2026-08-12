@@ -29,7 +29,7 @@ jobs:
       - name: Construire le site
         uses: withastro/action@v3
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Publier l'artefact du site
         uses: actions/upload-pages-artifact@v3
